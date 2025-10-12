@@ -10,4 +10,5 @@ public:
 
 private:
     static bool ValidatePassword(const wchar_t* password);
+    static void CheckCapsLock(HWND hDlg);
 };

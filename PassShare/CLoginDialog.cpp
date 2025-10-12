@@ -17,6 +17,13 @@ INT_PTR CALLBACK LoginDialog::DialogProc(HWND hDlg, UINT message, WPARAM wParam,
         return TRUE;
 
     case WM_COMMAND:
+        
+        if (HIWORD(wParam) == EN_CHANGE && LOWORD(wParam) == IDC_PASSWORD_EDIT)
+        {
+            CheckCapsLock(hDlg);
+            return TRUE;
+        }
+
         if (LOWORD(wParam) == IDC_LOGIN_BUTTON)
         {
             wchar_t password[256] = { 0 };
@@ -56,4 +63,20 @@ bool LoginDialog::ValidatePassword(const wchar_t* password)
 {
     // Пока хардкод, позже будет шифрование
     return wcscmp(password, L"12345") == 0;
+}
+
+void LoginDialog::CheckCapsLock(HWND hDlg)
+{
+    HWND hLabel = GetDlgItem(hDlg, IDC_CAPSLOCK_WARNING);  // ID для текста-предупреждения
+    if (hLabel == NULL)
+        return;
+
+    if (GetKeyState(VK_CAPITAL) & 0x0001)
+    {
+        ShowWindow(hLabel, SW_SHOW);
+    }
+    else
+    {
+        ShowWindow(hLabel, SW_HIDE);
+    }
 }
