@@ -10,12 +10,14 @@
 HINSTANCE hInst;                                // текущий экземпляр
 WCHAR szTitle[MAX_LOADSTRING];                  // Текст строки заголовка
 WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса главного окна
+WCHAR szWindowsLogin[MAX_LOADSTRING];           // имя класса окна авторизации
 
 // Отправить объявления функций, включенных в этот модуль кода:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK    LoginDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -25,15 +27,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    // TODO: Разместите код здесь.
-
     // Инициализация глобальных строк
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_PASSSHARE, szWindowClass, MAX_LOADSTRING);
+    LoadStringW(hInstance, IDC_PASSSHARE, szWindowsLogin, MAX_LOADSTRING);
+    INT_PTR result = DialogBoxW(hInstance, MAKEINTRESOURCEW(IDD_DIALOG_LOGIN), NULL, LoginDialogProc);
+
     MyRegisterClass(hInstance);
 
     // Выполнить инициализацию приложения:
-    if (!InitInstance (hInstance, nCmdShow))
+    if (!InitInstance(hInstance, nCmdShow))
     {
         return FALSE;
     }
@@ -42,19 +45,26 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     MSG msg;
 
-    // Цикл основного сообщения:
-    while (GetMessage(&msg, nullptr, 0, 0))
+    
+
+    if (result == IDOK)
     {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+        // Цикл основного сообщения:
+        while (GetMessage(&msg, nullptr, 0, 0))
         {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
         }
+        return (int)msg.wParam;
     }
+    else
+    {
 
-    return (int) msg.wParam;
+    }
 }
-
 
 
 //
@@ -177,4 +187,47 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     return (INT_PTR)FALSE;
+}
+
+INT_PTR CALLBACK LoginDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+    case WM_INITDIALOG:
+        return TRUE;
+
+    case WM_COMMAND:
+
+        if (LOWORD(wParam) == IDC_LOGIN_BUTTON)
+        {
+            // Получаем введённый пароль
+            wchar_t password[256] = { 0 };
+            GetDlgItemTextW(hDlg, IDC_PASSWORD_EDIT, password, _countof(password));
+
+            // Пока просто проверим, что пароль не пустой
+            if (wcslen(password) == 0)
+            {
+                MessageBoxW(hDlg, L"Введите пин-код!", L"Внимание", MB_ICONWARNING);
+                return TRUE;
+            }
+
+            // Проверяем пароль (пока хардкод)
+            if (wcscmp(password, L"12345") == 0)  // Пример: правильный пароль
+            {
+                EndDialog(hDlg, IDOK);  // ✅ Успешная авторизация
+            }
+            else
+            {
+                MessageBoxW(hDlg, L"Неверный пин-код!", L"Ошибка", MB_ICONERROR);
+            }
+            return TRUE;
+        }
+        break;
+
+    case WM_CLOSE:
+        EndDialog(hDlg, IDCANCEL);
+        return TRUE;
+    }
+    
+    return FALSE;
 }
