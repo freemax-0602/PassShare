@@ -92,6 +92,120 @@ bool MainWindow::Create()
     return true;
 }
 
+void MainWindow::OnEditLabel(HWND hWnd, int iItem, int iSubItem)
+{
+    if (m_hEdit)  // Уже редактируем
+        return;
+
+    // Получаем текст, который будем редактировать
+    LVITEMW item = { 0 };
+    item.iItem = iItem;
+    item.iSubItem = iSubItem;
+    item.mask = LVIF_TEXT;
+    item.cchTextMax = 256;
+    wchar_t buffer[256];
+    item.pszText = buffer;
+    ListView_GetItem(m_hList, &item);
+
+    // Получаем координаты ячейки
+    RECT rc;
+    ListView_GetSubItemRect(m_hList, iItem, iSubItem, LVIR_BOUNDS, &rc);
+
+    // Создаём Edit Control
+    m_hEdit = CreateWindowW(L"EDIT", item.pszText,
+        WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+        rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top,
+        m_hList, NULL, GetModuleHandle(NULL), NULL);
+
+    if (!m_hEdit)
+        return;
+
+    SetFocus(m_hEdit);
+    SendMessage(m_hEdit, EM_SETSEL, 0, -1);  // Выделяем весь текст
+
+    m_iEditItem = iItem;
+    m_iEditSubItem = iSubItem;
+
+    // Сохраняем старый WndProc
+    WNDPROC oldProc = reinterpret_cast<WNDPROC>(GetWindowLongPtr(m_hEdit, GWLP_WNDPROC));
+    SetWindowLongPtr(m_hEdit, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+    SetWindowLongPtr(m_hEdit, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(EditProc));
+
+    // Сохраняем старый WndProc в экземпляре
+    m_oldEditProc = oldProc;
+}
+
+LRESULT CALLBACK MainWindow::EditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    MainWindow* pThis = reinterpret_cast<MainWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+
+    if (msg == WM_KEYDOWN)
+    {
+        if (wParam == VK_RETURN)
+        {
+            pThis->EndEditLabel(true);
+            return 0;
+        }
+        else if (wParam == VK_ESCAPE)
+        {
+            pThis->EndEditLabel(false);
+            return 0;
+        }
+    }
+
+    // Вызываем старый WndProc
+    return CallWindowProc(pThis->m_oldEditProc, hwnd, msg, wParam, lParam);
+}
+
+void MainWindow::EndEditLabel(bool save)
+{
+    if (!m_hEdit)
+        return;
+
+    if (save)
+    {
+        wchar_t buffer[256];
+        GetWindowTextW(m_hEdit, buffer, _countof(buffer));
+
+        // Обновляем запись в m_db
+        if (m_iEditItem < m_db.GetEntries().size())
+        {
+            auto& entry = m_db.GetEntries()[m_iEditItem];
+
+            switch (m_iEditSubItem)
+            {
+            case 0: entry.icon = buffer; break;
+            case 1: entry.url = buffer; break;
+            case 2: entry.login = buffer; break;
+            case 3: entry.password = buffer; break;
+            case 4: entry.description = buffer; break;
+            }
+
+            // Обновляем текст в ListView
+            LVITEMW item = { 0 };
+            item.iItem = m_iEditItem;
+            item.iSubItem = m_iEditSubItem;
+            item.mask = LVIF_TEXT;
+            item.pszText = buffer;
+            ListView_SetItem(m_hList, &item);
+        }
+    }
+
+    // Восстанавливаем старый WndProc
+    if (m_oldEditProc)
+    {
+        SetWindowLongPtr(m_hEdit, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_oldEditProc));
+        m_oldEditProc = nullptr;
+    }
+
+    // Удаляем Edit Control
+    DestroyWindow(m_hEdit);
+    m_hEdit = NULL;
+    m_iEditItem = -1;
+    m_iEditSubItem = -1;
+}
+
+//===========================================================================================================================
 LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     MainWindow* pThis = nullptr;
@@ -184,6 +298,28 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
             ListView_SetColumnWidth(m_hList, 2, 150);
             ListView_SetColumnWidth(m_hList, 3, 150);
             ListView_SetColumnWidth(m_hList, 4, totalWidth - (60 + 150 + 150 + 150));  // Описание — остаток
+        }
+        break;
+    }
+    case WM_NOTIFY:
+    {
+        NMHDR* pnmh = reinterpret_cast<NMHDR*>(lParam);
+
+        if (pnmh->idFrom == IDC_PASSWORD_LIST)
+        {
+            if (pnmh->code == NM_DBLCLK)
+            {
+                NMITEMACTIVATE* pnmitem = reinterpret_cast<NMITEMACTIVATE*>(lParam);
+                int iItem = pnmitem->iItem;
+                int iSubItem = pnmitem->iSubItem;
+
+                if (iItem >= 0)
+                {
+                    int subItem = (iSubItem == -1) ? 0 : iSubItem;
+                    if (subItem >= 0 && subItem < 5)
+                        OnEditLabel(hWnd, iItem, subItem);
+                }
+            }
         }
         break;
     }
