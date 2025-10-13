@@ -61,13 +61,13 @@ INT_PTR CALLBACK LoginDialog::DialogProc(HWND hDlg, UINT message, WPARAM wParam,
 
 bool LoginDialog::ValidatePassword(const wchar_t* password)
 {
-    // Пока хардкод, позже будет шифрование
+    // Пока хардкод, позже будет шифрование !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     return wcscmp(password, L"12345") == 0;
 }
 
 void LoginDialog::CheckCapsLock(HWND hDlg)
 {
-    HWND hLabel = GetDlgItem(hDlg, IDC_CAPSLOCK_WARNING);  // ID для текста-предупреждения
+    HWND hLabel = GetDlgItem(hDlg, IDC_CAPSLOCK_WARNING);
     if (hLabel == NULL)
         return;
 

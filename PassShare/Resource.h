@@ -4,6 +4,7 @@
 //
 #define IDC_MYICON                      2
 #define IDC_LOGIN_BUTTON                2
+#define IDC_PASSWORD_LIST				100
 #define IDD_PASSSHARE_DIALOG            102
 #define IDS_APP_TITLE                   103
 #define IDD_ABOUTBOX                    103

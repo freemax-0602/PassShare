@@ -27,7 +27,7 @@ void from_json(const json& j, PasswordTemplate& e)
     j.at("description").get_to(e.description);
 }
 
-bool PasswordDatabase::Load(const std::wstring& filePath)
+bool PasswordDatabase::LoadBase(const std::wstring& filePath)
 {
     std::ifstream file(filePath);
     if (!file.is_open())
@@ -52,15 +52,14 @@ bool PasswordDatabase::Load(const std::wstring& filePath)
     return true;
 }
 
-bool PasswordDatabase::Save(const std::wstring& filePath)
+bool PasswordDatabase::SaveBase(const std::wstring& filePath)
 {
     json j;
     m_entries.clear();
     j["entries"] = json::array();
 
-    std::string jsonString = j.dump(4);  // строка в UTF-8
+    std::string jsonString = j.dump(4);
 
-    // Конвертируем в wstring (UTF-16)
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     std::wstring wideJson = converter.from_bytes(jsonString);
 
@@ -68,12 +67,12 @@ bool PasswordDatabase::Save(const std::wstring& filePath)
     if (!file.is_open())
         return false;
 
-    file << wideJson;  // теперь можно записать
+    file << wideJson;
     return true;
 }
 
-bool PasswordDatabase::CreateNew(const std::wstring& filePath)
+bool PasswordDatabase::CreateBase(const std::wstring& filePath)
 {
     m_entries.clear();
-    return Save(filePath);
+    return SaveBase(filePath);
 }

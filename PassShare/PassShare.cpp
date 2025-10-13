@@ -12,16 +12,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    // Показываем окно авторизации
     if (!LoginDialog::Show(hInstance))
-        return 0;  // Пользователь отменил вход
+        return 0; 
 
-    // Создаём главное окно
     MainWindow mainWindow(hInstance, nCmdShow);
     if (!mainWindow.Create())
         return 1;
 
-    // Цикл сообщений
     MSG msg;
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_PASSSHARE));
 
