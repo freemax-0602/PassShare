@@ -125,6 +125,8 @@
   <ItemGroup>
     <ClInclude Include="CLoginDialog.h" />
     <ClInclude Include="CMainWin.h" />
+    <ClInclude Include="CPassBase.h" />
+    <ClInclude Include="CPassTemplate.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="PassShare.h" />
     <ClInclude Include="Resource.h" />
@@ -133,6 +135,8 @@
   <ItemGroup>
     <ClCompile Include="CLoginDialog.cpp" />
     <ClCompile Include="CMainWin.cpp" />
+    <ClCompile Include="CPassBase.cpp" />
+    <ClCompile Include="json.hpp" />
     <ClCompile Include="PassShare.cpp" />
   </ItemGroup>
   <ItemGroup>

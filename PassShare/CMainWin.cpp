@@ -1,6 +1,7 @@
 #include "CMainWin.h"
 #include "resource.h"
 #include <windowsx.h>
+#include "CPassBase.h"
 
 MainWindow::MainWindow(HINSTANCE hInstance, int nCmdShow)
     : m_hInstance(hInstance), m_nCmdShow(nCmdShow)
@@ -24,6 +25,38 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     return (INT_PTR)FALSE;
+}
+
+void MainWindow::CreatePassBase(HWND hWnd)
+{
+    // Открываем диалог сохранения файла
+    OPENFILENAME ofn = { 0 };
+    wchar_t szFile[MAX_PATH] = { 0 };
+
+    ofn.lStructSize = sizeof(OPENFILENAME);
+    ofn.hwndOwner = hWnd;
+    ofn.lpstrFile = szFile;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrFilter = L"JSON Files\0*.json\0All Files\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_OVERWRITEPROMPT;
+
+    if (GetSaveFileName(&ofn))
+    {
+        // Путь к файлу в szFile
+        PasswordDatabase db;
+        if (db.CreateNew(szFile))
+        {
+            MessageBoxW(hWnd, L"Хранилище создано успешно!", L"Успех", MB_OK | MB_ICONINFORMATION);
+        }
+        else
+        {
+            MessageBoxW(hWnd, L"Не удалось создать хранилище.", L"Ошибка", MB_OK | MB_ICONERROR);
+        }
+    }
 }
 
 bool MainWindow::Create()
@@ -64,6 +97,9 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
         int wmId = LOWORD(wParam);
         switch (wmId)
         {
+        case ID_ADD_BASE_BTN:
+            CreatePassBase(hWnd);
+            break;
         case IDM_ABOUT:
             DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
             break;
