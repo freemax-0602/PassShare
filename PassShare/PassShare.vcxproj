@@ -124,6 +124,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CEditDialog.h" />
     <ClInclude Include="CLoginDialog.h" />
     <ClInclude Include="CMainWin.h" />
     <ClInclude Include="CPassBase.h" />
@@ -134,6 +135,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CEditDialog.cpp" />
     <ClCompile Include="CLoginDialog.cpp" />
     <ClCompile Include="CMainWin.cpp" />
     <ClCompile Include="CPassBase.cpp" />

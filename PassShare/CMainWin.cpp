@@ -3,6 +3,7 @@
 #include <windowsx.h>
 #include "CPassBase.h"
 #include <commctrl.h>
+#include "CEditDialog.h"
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -30,6 +31,70 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     return (INT_PTR)FALSE;
 }
 
+void MainWindow::RefreshPasswordList()
+{
+    ListView_DeleteAllItems(m_hList);
+
+    int index = 0;
+    for (const auto& entry : m_db.GetEntries())
+    {
+        LVITEMW item = { 0 };
+        item.mask = LVIF_TEXT;
+        item.iItem = index;
+        item.iSubItem = 0;
+        item.pszText = const_cast<LPWSTR>(entry.icon.c_str());
+        ListView_InsertItem(m_hList, &item);
+
+        ListView_SetItemText(m_hList, index, 1, const_cast<LPWSTR>(entry.url.c_str()));
+        ListView_SetItemText(m_hList, index, 2, const_cast<LPWSTR>(entry.login.c_str()));
+        ListView_SetItemText(m_hList, index, 3, const_cast<LPWSTR>(entry.password.c_str()));
+        ListView_SetItemText(m_hList, index, 4, const_cast<LPWSTR>(entry.description.c_str()));
+
+        ListView_SetItemText(m_hList, index, 3, const_cast<LPWSTR>(L"••••••••"));
+        ListView_SetItemText(m_hList, index, 4, const_cast<LPWSTR>(entry.description.c_str()));
+
+        index++;
+    }
+}
+
+void MainWindow::OnSearchTextChanged()
+{
+    if (!m_isDatabaseLoaded)
+        return;
+
+    wchar_t buffer[256];
+    GetWindowTextW(m_hSearchEdit, buffer, _countof(buffer));
+
+    std::wstring search = buffer;
+
+    ListView_DeleteAllItems(m_hList);
+
+    int index = 0;
+    for (const auto& entry : m_db.GetEntries())
+    {
+        // Проверяем, содержит ли хотя бы одно поле искомый текст
+        if (search.empty() ||
+            entry.url.find(search) != std::wstring::npos ||
+            entry.login.find(search) != std::wstring::npos ||
+            entry.description.find(search) != std::wstring::npos)
+        {
+            LVITEMW item = { 0 };
+            item.mask = LVIF_TEXT;
+            item.iItem = index;
+            item.iSubItem = 0;
+            item.pszText = const_cast<LPWSTR>(entry.icon.c_str());
+            ListView_InsertItem(m_hList, &item);
+
+            ListView_SetItemText(m_hList, index, 1, const_cast<LPWSTR>(entry.url.c_str()));
+            ListView_SetItemText(m_hList, index, 2, const_cast<LPWSTR>(entry.login.c_str()));
+            ListView_SetItemText(m_hList, index, 3, const_cast<LPWSTR>(L"••••••••"));  // Пароль скрыт
+            ListView_SetItemText(m_hList, index, 4, const_cast<LPWSTR>(entry.description.c_str()));
+
+            index++;
+        }
+    }
+}
+
 void MainWindow::CreatePassBase(HWND hWnd)
 {
     OPENFILENAME ofn = { 0 };
@@ -49,15 +114,52 @@ void MainWindow::CreatePassBase(HWND hWnd)
     if (GetSaveFileName(&ofn))
     {
         m_filePath = szFile;
-        m_db.CreateBase(szFile);
 
         if (m_db.CreateBase(szFile))
         {
+            m_isDatabaseLoaded = true;
+            RefreshPasswordList();
             MessageBoxW(hWnd, L"Хранилище создано успешно!", L"Успех", MB_OK | MB_ICONINFORMATION);
+            ShowWindow(m_hList, SW_SHOW);
         }
         else
         {
             MessageBoxW(hWnd, L"Не удалось создать хранилище.", L"Ошибка", MB_OK | MB_ICONERROR);
+        }
+    }
+}
+
+void MainWindow::OnLoadDatabase(HWND hWnd)
+{
+    OPENFILENAME ofn = { 0 };
+    wchar_t szFile[MAX_PATH] = { 0 };
+
+    m_isDatabaseLoaded = true; 
+
+    ofn.lStructSize = sizeof(OPENFILENAME);
+    ofn.hwndOwner = hWnd;
+    ofn.lpstrFile = szFile;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrFilter = L"JSON Files\0*.json\0All Files\0*.*\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+    if (GetOpenFileName(&ofn))
+    {
+        m_filePath = szFile;
+
+        if (m_db.LoadBase(szFile))
+        {
+            RefreshPasswordList();
+            ShowWindow(m_hList, SW_SHOW);
+            MessageBoxW(hWnd, L"База загружена успешно!", L"Успех", MB_OK | MB_ICONINFORMATION);
+        }
+        else
+        {
+            MessageBoxW(hWnd, L"Не удалось загрузить базу.", L"Ошибка", MB_OK | MB_ICONERROR);
         }
     }
 }
@@ -92,120 +194,9 @@ bool MainWindow::Create()
     return true;
 }
 
-void MainWindow::OnEditLabel(HWND hWnd, int iItem, int iSubItem)
-{
-    if (m_hEdit)  // Уже редактируем
-        return;
-
-    // Получаем текст, который будем редактировать
-    LVITEMW item = { 0 };
-    item.iItem = iItem;
-    item.iSubItem = iSubItem;
-    item.mask = LVIF_TEXT;
-    item.cchTextMax = 256;
-    wchar_t buffer[256];
-    item.pszText = buffer;
-    ListView_GetItem(m_hList, &item);
-
-    // Получаем координаты ячейки
-    RECT rc;
-    ListView_GetSubItemRect(m_hList, iItem, iSubItem, LVIR_BOUNDS, &rc);
-
-    // Создаём Edit Control
-    m_hEdit = CreateWindowW(L"EDIT", item.pszText,
-        WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
-        rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top,
-        m_hList, NULL, GetModuleHandle(NULL), NULL);
-
-    if (!m_hEdit)
-        return;
-
-    SetFocus(m_hEdit);
-    SendMessage(m_hEdit, EM_SETSEL, 0, -1);  // Выделяем весь текст
-
-    m_iEditItem = iItem;
-    m_iEditSubItem = iSubItem;
-
-    // Сохраняем старый WndProc
-    WNDPROC oldProc = reinterpret_cast<WNDPROC>(GetWindowLongPtr(m_hEdit, GWLP_WNDPROC));
-    SetWindowLongPtr(m_hEdit, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
-    SetWindowLongPtr(m_hEdit, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(EditProc));
-
-    // Сохраняем старый WndProc в экземпляре
-    m_oldEditProc = oldProc;
-}
-
-LRESULT CALLBACK MainWindow::EditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    MainWindow* pThis = reinterpret_cast<MainWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-
-    if (msg == WM_KEYDOWN)
-    {
-        if (wParam == VK_RETURN)
-        {
-            pThis->EndEditLabel(true);
-            return 0;
-        }
-        else if (wParam == VK_ESCAPE)
-        {
-            pThis->EndEditLabel(false);
-            return 0;
-        }
-    }
-
-    // Вызываем старый WndProc
-    return CallWindowProc(pThis->m_oldEditProc, hwnd, msg, wParam, lParam);
-}
-
-void MainWindow::EndEditLabel(bool save)
-{
-    if (!m_hEdit)
-        return;
-
-    if (save)
-    {
-        wchar_t buffer[256];
-        GetWindowTextW(m_hEdit, buffer, _countof(buffer));
-
-        // Обновляем запись в m_db
-        if (m_iEditItem < m_db.GetEntries().size())
-        {
-            auto& entry = m_db.GetEntries()[m_iEditItem];
-
-            switch (m_iEditSubItem)
-            {
-            case 0: entry.icon = buffer; break;
-            case 1: entry.url = buffer; break;
-            case 2: entry.login = buffer; break;
-            case 3: entry.password = buffer; break;
-            case 4: entry.description = buffer; break;
-            }
-
-            // Обновляем текст в ListView
-            LVITEMW item = { 0 };
-            item.iItem = m_iEditItem;
-            item.iSubItem = m_iEditSubItem;
-            item.mask = LVIF_TEXT;
-            item.pszText = buffer;
-            ListView_SetItem(m_hList, &item);
-        }
-    }
-
-    // Восстанавливаем старый WndProc
-    if (m_oldEditProc)
-    {
-        SetWindowLongPtr(m_hEdit, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(m_oldEditProc));
-        m_oldEditProc = nullptr;
-    }
-
-    // Удаляем Edit Control
-    DestroyWindow(m_hEdit);
-    m_hEdit = NULL;
-    m_iEditItem = -1;
-    m_iEditSubItem = -1;
-}
-
 //===========================================================================================================================
+// ========================================== MAIN WINDOW ===================================================================
+// ==========================================================================================================================
 LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     MainWindow* pThis = nullptr;
@@ -234,6 +225,23 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
     {
     case WM_CREATE:
     {
+        // Поле поиска
+        HWND hSearch = CreateWindowW(L"EDIT", NULL,
+            ES_LEFT | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP,
+            10, 10, 400, 25,
+            hWnd, (HMENU)IDC_SEARCH_EDIT, m_hInstance, NULL);
+
+        if (!hSearch)
+        {
+            MessageBoxW(hWnd, L"Не удалось создать поле поиска", L"Ошибка", MB_OK | MB_ICONERROR);
+            return -1;
+        }
+
+        m_hSearchEdit = hSearch;
+        
+        // Устанавливаем placeholder текст
+        SendMessageW(m_hSearchEdit, EM_SETCUEBANNER, FALSE, (LPARAM)L"Найти...");
+
         HWND hList = CreateWindowW(WC_LISTVIEWW, NULL,
             LVS_REPORT | WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_SINGLESEL,
             10, 50, 600, 400,
@@ -246,6 +254,7 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
         }
 
         m_hList = hList;
+        ShowWindow(m_hList, SW_HIDE);
 
         // Создаём ImageList с размером 32x32
         HIMAGELIST hImageList = ImageList_Create(32, 32, ILC_COLOR32, 0, 0);
@@ -258,7 +267,7 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
         col.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
 
         col.cx = 60;
-        col.pszText = const_cast<LPWSTR>(L"Иконка");
+        col.pszText = const_cast<LPWSTR>(L"Значок");
         ListView_InsertColumn(hList, 0, &col);
 
         col.cx = 150;
@@ -286,6 +295,7 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
             int width = LOWORD(lParam);
             int height = HIWORD(lParam);
 
+            MoveWindow(m_hSearchEdit, 10, 10, width - 20, 25, TRUE);
             MoveWindow(m_hList, 10, 50, width - 20, height - 60, TRUE);
 
             RECT rc;
@@ -304,20 +314,37 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
     case WM_NOTIFY:
     {
         NMHDR* pnmh = reinterpret_cast<NMHDR*>(lParam);
-
-        if (pnmh->idFrom == IDC_PASSWORD_LIST)
+        if (pnmh->hwndFrom == m_hList && pnmh->code == NM_DBLCLK)
         {
-            if (pnmh->code == NM_DBLCLK)
-            {
-                NMITEMACTIVATE* pnmitem = reinterpret_cast<NMITEMACTIVATE*>(lParam);
-                int iItem = pnmitem->iItem;
-                int iSubItem = pnmitem->iSubItem;
+            NMITEMACTIVATE* pia = reinterpret_cast<NMITEMACTIVATE*>(lParam);
+            int index = pia->iItem;
 
-                if (iItem >= 0)
+            if (index >= 0 && index < static_cast<int>(m_db.GetEntries().size()))
+            {
+                // Редактирование существующей записи
+                PasswordTemplate& entry = m_db.GetEntries()[index];
+                if (EditEntryDialog::Show(m_hwnd, entry, true))  // true = редактирование
                 {
-                    int subItem = (iSubItem == -1) ? 0 : iSubItem;
-                    if (subItem >= 0 && subItem < 5)
-                        OnEditLabel(hWnd, iItem, subItem);
+                    RefreshPasswordList();  // Обновляем UI
+                    if (!m_filePath.empty())
+                    {
+                        m_db.SaveBase(m_filePath);  // ✅ Сохраняем в файл
+                    }
+                }
+            }
+            else
+            {
+                // Добавление новой записи (двойной клик по пустой области)
+                PasswordTemplate newEntry = {};
+                if (EditEntryDialog::Show(m_hwnd, newEntry, false))  // false = добавление
+                {
+                    m_db.GetEntries().push_back(newEntry);
+                    RefreshPasswordList();  // Обновляем UI
+                    if (!m_filePath.empty())
+                    {
+                        m_db.SaveBase(m_filePath);  // ✅ Сохраняем в файл
+                    }
+
                 }
             }
         }
@@ -330,6 +357,15 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
         {
         case ID_ADD_BASE_BTN:
             CreatePassBase(hWnd);
+            break;
+        case ID_LOAD_BASE_BTN:
+            OnLoadDatabase(hWnd);
+            break;
+        case IDC_SEARCH_EDIT:
+            if (HIWORD(wParam) == EN_CHANGE)  // ✅ При изменении текста
+            {
+                OnSearchTextChanged();
+            }
             break;
         case IDM_ABOUT:
             DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);

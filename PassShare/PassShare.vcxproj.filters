@@ -33,6 +33,15 @@
     <ClInclude Include="CMainWin.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="CPassBase.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="CPassTemplate.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="CEditDialog.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="PassShare.cpp">
@@ -42,6 +51,15 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="CMainWin.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="CPassBase.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="json.hpp">
+      <Filter>Файлы заголовков</Filter>
+    </ClCompile>
+    <ClCompile Include="CEditDialog.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>

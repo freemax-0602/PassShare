@@ -55,17 +55,16 @@ bool PasswordDatabase::LoadBase(const std::wstring& filePath)
 bool PasswordDatabase::SaveBase(const std::wstring& filePath)
 {
     json j;
-    m_entries.clear();
-    j["entries"] = json::array();
-
-    std::string jsonString = j.dump(4);
-
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring wideJson = converter.from_bytes(jsonString);
+    j["entries"] = m_entries;
 
     std::wofstream file(filePath);
     if (!file.is_open())
         return false;
+
+    // Конвертируем строку в wstring
+    std::string jsonString = j.dump(4);
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring wideJson = converter.from_bytes(jsonString);
 
     file << wideJson;
     return true;
