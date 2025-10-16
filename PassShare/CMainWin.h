@@ -27,4 +27,5 @@ private:
     void OnLoadDatabase(HWND hWnd);
     void RefreshPasswordList();
     void OnSearchTextChanged();
+    bool CopyPasswordToClipboard(HWND hWnd, const std::wstring& password);
 };

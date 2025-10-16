@@ -164,6 +164,53 @@ void MainWindow::OnLoadDatabase(HWND hWnd)
     }
 }
 
+bool MainWindow::CopyPasswordToClipboard(HWND hWnd, const std::wstring& password)
+{
+    if (!OpenClipboard(hWnd))
+        return false;
+
+    EmptyClipboard();
+
+    size_t len = (password.length() + 1) * sizeof(wchar_t);
+    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, len);
+    if (!hMem)
+    {
+        CloseClipboard();
+        return false;
+    }
+
+    void* pMem = GlobalLock(hMem);
+    if (!pMem)
+    {
+        GlobalFree(hMem);
+        CloseClipboard();
+        return false;
+    }
+
+    wcscpy_s(static_cast<wchar_t*>(pMem), password.length() + 1, password.c_str());
+    GlobalUnlock(hMem);
+
+    bool success = SetClipboardData(CF_UNICODETEXT, hMem) != NULL;
+
+    if (!success)
+    {
+        GlobalFree(hMem);
+    }
+
+    CloseClipboard();
+
+    if (!success)
+    {
+        GlobalFree(hMem);
+    }
+
+    return success;
+}
+
+
+//===========================================================================================================================
+// ========================================== MAIN WINDOW ===================================================================
+// ==========================================================================================================================
 bool MainWindow::Create()
 {
     WNDCLASSEXW wcex = {};
@@ -194,9 +241,6 @@ bool MainWindow::Create()
     return true;
 }
 
-//===========================================================================================================================
-// ========================================== MAIN WINDOW ===================================================================
-// ==========================================================================================================================
 LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     MainWindow* pThis = nullptr;
@@ -318,6 +362,24 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
         {
             NMITEMACTIVATE* pia = reinterpret_cast<NMITEMACTIVATE*>(lParam);
             int index = pia->iItem;
+            int subItem = pia->iSubItem;
+
+            if (subItem == 3)  // ✅ Если клик по колонке "Пароль"
+            {
+                if (index >= 0 && index < static_cast<int>(m_db.GetEntries().size()))
+                {
+                    const auto& entry = m_db.GetEntries()[index];
+                    if (CopyPasswordToClipboard(m_hwnd, entry.password))  // ✅ Копируем
+                    {
+                        MessageBoxW(m_hwnd, L"Пароль скопирован в буфер обмена!", L"Скопировано", MB_OK | MB_ICONINFORMATION);
+                    }
+                    else
+                    {
+                        MessageBoxW(m_hwnd, L"Не удалось скопировать пароль.", L"Ошибка", MB_OK | MB_ICONERROR);
+                    }
+                }
+                return 0;  // Обработали — не вызываем DefWindowProc
+            }
 
             if (index >= 0 && index < static_cast<int>(m_db.GetEntries().size()))
             {
