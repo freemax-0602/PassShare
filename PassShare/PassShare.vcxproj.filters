@@ -42,6 +42,12 @@
     <ClInclude Include="CEditDialog.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="CCryptoManage.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="CEnterPinDialog.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="PassShare.cpp">
@@ -60,6 +66,12 @@
       <Filter>Файлы заголовков</Filter>
     </ClCompile>
     <ClCompile Include="CEditDialog.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="CCryptoManage.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="CEnterPinDialog.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>

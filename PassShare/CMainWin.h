@@ -28,4 +28,6 @@ private:
     void RefreshPasswordList();
     void OnSearchTextChanged();
     bool CopyPasswordToClipboard(HWND hWnd, const std::wstring& password);
+
+    std::wstring m_cachedMasterPassword;
 };

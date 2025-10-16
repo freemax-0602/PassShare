@@ -70,6 +70,10 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>C:\Tools\vcpkg\installed\x64-windows\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Tools\vcpkg\installed\x64-windows\lib;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -106,7 +110,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);comctl32.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);comctl32.lib;libssl.lib;libcrypto.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -124,7 +128,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CCryptoManage.h" />
     <ClInclude Include="CEditDialog.h" />
+    <ClInclude Include="CEnterPinDialog.h" />
     <ClInclude Include="CLoginDialog.h" />
     <ClInclude Include="CMainWin.h" />
     <ClInclude Include="CPassBase.h" />
@@ -135,7 +141,9 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CCryptoManage.cpp" />
     <ClCompile Include="CEditDialog.cpp" />
+    <ClCompile Include="CEnterPinDialog.cpp" />
     <ClCompile Include="CLoginDialog.cpp" />
     <ClCompile Include="CMainWin.cpp" />
     <ClCompile Include="CPassBase.cpp" />

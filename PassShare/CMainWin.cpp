@@ -4,6 +4,9 @@
 #include "CPassBase.h"
 #include <commctrl.h>
 #include "CEditDialog.h"
+#include "CCryptoManage.h"
+#include "CLoginDialog.h"
+#include "CEnterPinDialog.h"
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -33,25 +36,33 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 void MainWindow::RefreshPasswordList()
 {
+    // ✅ Отладочное сообщение
+    // MessageBoxW(m_hwnd, L"RefreshPasswordList вызван", L"Debug", MB_OK);
+
+    if (!m_hList)
+    {
+        // MessageBoxW(m_hwnd, L"m_hList == nullptr!", L"Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    // ✅ Удаляем все старые элементы (даже если m_db пустой)
     ListView_DeleteAllItems(m_hList);
 
+    // ✅ Добавляем записи из m_db
     int index = 0;
     for (const auto& entry : m_db.GetEntries())
     {
         LVITEMW item = { 0 };
         item.mask = LVIF_TEXT;
         item.iItem = index;
-        item.iSubItem = 0;
+        item.iSubItem = 0; // Иконка
         item.pszText = const_cast<LPWSTR>(entry.icon.c_str());
-        ListView_InsertItem(m_hList, &item);
+        int itemIndex = ListView_InsertItem(m_hList, &item);
 
-        ListView_SetItemText(m_hList, index, 1, const_cast<LPWSTR>(entry.url.c_str()));
-        ListView_SetItemText(m_hList, index, 2, const_cast<LPWSTR>(entry.login.c_str()));
-        ListView_SetItemText(m_hList, index, 3, const_cast<LPWSTR>(entry.password.c_str()));
-        ListView_SetItemText(m_hList, index, 4, const_cast<LPWSTR>(entry.description.c_str()));
-
-        ListView_SetItemText(m_hList, index, 3, const_cast<LPWSTR>(L"••••••••"));
-        ListView_SetItemText(m_hList, index, 4, const_cast<LPWSTR>(entry.description.c_str()));
+        ListView_SetItemText(m_hList, itemIndex, 1, const_cast<LPWSTR>(entry.url.c_str()));
+        ListView_SetItemText(m_hList, itemIndex, 2, const_cast<LPWSTR>(entry.login.c_str()));
+        ListView_SetItemText(m_hList, itemIndex, 3, const_cast<LPWSTR>(L"••••••••")); // Маскируем пароль
+        ListView_SetItemText(m_hList, itemIndex, 4, const_cast<LPWSTR>(entry.description.c_str()));
 
         index++;
     }
@@ -113,19 +124,32 @@ void MainWindow::CreatePassBase(HWND hWnd)
 
     if (GetSaveFileName(&ofn))
     {
+        std::wstring masterPassword;
+
+        if (!LoginDialog::ShowNewPassword(GetModuleHandle(NULL), hWnd, masterPassword))
+        {
+            return;
+        }
+
         m_filePath = szFile;
 
-        if (m_db.CreateBase(szFile))
+        if (m_db.CreateEncryptedBase(szFile, masterPassword))
         {
-            m_isDatabaseLoaded = true;
-            RefreshPasswordList();
-            MessageBoxW(hWnd, L"Хранилище создано успешно!", L"Успех", MB_OK | MB_ICONINFORMATION);
-            ShowWindow(m_hList, SW_SHOW);
+            if (m_db.CreateEncryptedBase(szFile, masterPassword))
+            {
+                m_cachedMasterPassword = masterPassword; // ✅ Сохраняем
+                RefreshPasswordList();
+                MessageBoxW(hWnd, L"Хранилище создано успешно!", L"Успех", MB_OK | MB_ICONINFORMATION);
+            }
+
         }
         else
         {
             MessageBoxW(hWnd, L"Не удалось создать хранилище.", L"Ошибка", MB_OK | MB_ICONERROR);
         }
+
+        // Очищаем пароль
+        SecureZeroMemory(const_cast<wchar_t*>(masterPassword.c_str()), masterPassword.length() * sizeof(wchar_t));
     }
 }
 
@@ -134,13 +158,12 @@ void MainWindow::OnLoadDatabase(HWND hWnd)
     OPENFILENAME ofn = { 0 };
     wchar_t szFile[MAX_PATH] = { 0 };
 
-    m_isDatabaseLoaded = true; 
-
     ofn.lStructSize = sizeof(OPENFILENAME);
     ofn.hwndOwner = hWnd;
     ofn.lpstrFile = szFile;
     ofn.nMaxFile = MAX_PATH;
-    ofn.lpstrFilter = L"JSON Files\0*.json\0All Files\0*.*\0";
+    // Уточни фильтр, если используешь .enc.json
+    ofn.lpstrFilter = L"Encrypted JSON Files\0*.enc.json\0All Files\0*.*\0";
     ofn.nFilterIndex = 1;
     ofn.lpstrFileTitle = NULL;
     ofn.nMaxFileTitle = 0;
@@ -149,18 +172,30 @@ void MainWindow::OnLoadDatabase(HWND hWnd)
 
     if (GetOpenFileName(&ofn))
     {
+        std::wstring masterPassword;
+
+        
+        // ✅ Используем ShowLogin, так как нужен один PIN без подтверждения
+        if (!LoginDialog::ShowLogin(GetModuleHandle(NULL), hWnd, masterPassword))
+        {
+            return; // Пользователь отменил
+        }
+
         m_filePath = szFile;
 
-        if (m_db.LoadBase(szFile))
+        if (m_db.LoadEncrypted(szFile, masterPassword))
         {
+            m_cachedMasterPassword = masterPassword; // ✅ Сохраняем
             RefreshPasswordList();
-            ShowWindow(m_hList, SW_SHOW);
             MessageBoxW(hWnd, L"База загружена успешно!", L"Успех", MB_OK | MB_ICONINFORMATION);
         }
         else
         {
-            MessageBoxW(hWnd, L"Не удалось загрузить базу.", L"Ошибка", MB_OK | MB_ICONERROR);
+            MessageBoxW(hWnd, L"Неверный пин-код или файл повреждён.", L"Ошибка", MB_OK | MB_ICONERROR);
         }
+
+        // ✅ Очищаем пароль
+        SecureZeroMemory(const_cast<wchar_t*>(masterPassword.c_str()), masterPassword.length() * sizeof(wchar_t));
     }
 }
 
@@ -230,7 +265,7 @@ bool MainWindow::Create()
 
     // Вот тут важно: передаём `this` в lpCreateParams
     m_hwnd = CreateWindowW(wcex.lpszClassName, L"PassShare", WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, m_hInstance, this); // ✅
+        CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, m_hInstance, this);
 
     if (!m_hwnd)
         return false;
@@ -298,7 +333,7 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
         }
 
         m_hList = hList;
-        ShowWindow(m_hList, SW_HIDE);
+        //ShowWindow(m_hList, SW_HIDE);
 
         // Создаём ImageList с размером 32x32
         HIMAGELIST hImageList = ImageList_Create(32, 32, ILC_COLOR32, 0, 0);
@@ -362,51 +397,34 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
         {
             NMITEMACTIVATE* pia = reinterpret_cast<NMITEMACTIVATE*>(lParam);
             int index = pia->iItem;
-            int subItem = pia->iSubItem;
-
-            if (subItem == 3)  // ✅ Если клик по колонке "Пароль"
-            {
-                if (index >= 0 && index < static_cast<int>(m_db.GetEntries().size()))
-                {
-                    const auto& entry = m_db.GetEntries()[index];
-                    if (CopyPasswordToClipboard(m_hwnd, entry.password))  // ✅ Копируем
-                    {
-                        MessageBoxW(m_hwnd, L"Пароль скопирован в буфер обмена!", L"Скопировано", MB_OK | MB_ICONINFORMATION);
-                    }
-                    else
-                    {
-                        MessageBoxW(m_hwnd, L"Не удалось скопировать пароль.", L"Ошибка", MB_OK | MB_ICONERROR);
-                    }
-                }
-                return 0;  // Обработали — не вызываем DefWindowProc
-            }
 
             if (index >= 0 && index < static_cast<int>(m_db.GetEntries().size()))
             {
-                // Редактирование существующей записи
+                // Редактирование
                 PasswordTemplate& entry = m_db.GetEntries()[index];
-                if (EditEntryDialog::Show(m_hwnd, entry, true))  // true = редактирование
+                if (EditEntryDialog::Show(m_hwnd, entry, true))
                 {
-                    RefreshPasswordList();  // Обновляем UI
-                    if (!m_filePath.empty())
+                    RefreshPasswordList();
+                    // ✅ Сохраняем с кэшированным паролем
+                    if (!m_filePath.empty() && !m_cachedMasterPassword.empty())
                     {
-                        m_db.SaveBase(m_filePath);  // ✅ Сохраняем в файл
+                        m_db.SaveEncrypted(m_filePath, m_cachedMasterPassword);
                     }
                 }
             }
             else
             {
-                // Добавление новой записи (двойной клик по пустой области)
+                // Добавление
                 PasswordTemplate newEntry = {};
-                if (EditEntryDialog::Show(m_hwnd, newEntry, false))  // false = добавление
+                if (EditEntryDialog::Show(m_hwnd, newEntry, false))
                 {
                     m_db.GetEntries().push_back(newEntry);
-                    RefreshPasswordList();  // Обновляем UI
-                    if (!m_filePath.empty())
+                    RefreshPasswordList();
+                    // ✅ Сохраняем с кэшированным паролем
+                    if (!m_filePath.empty() && !m_cachedMasterPassword.empty())
                     {
-                        m_db.SaveBase(m_filePath);  // ✅ Сохраняем в файл
+                        m_db.SaveEncrypted(m_filePath, m_cachedMasterPassword);
                     }
-
                 }
             }
         }
@@ -424,7 +442,7 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
             OnLoadDatabase(hWnd);
             break;
         case IDC_SEARCH_EDIT:
-            if (HIWORD(wParam) == EN_CHANGE)  // ✅ При изменении текста
+            if (HIWORD(wParam) == EN_CHANGE)
             {
                 OnSearchTextChanged();
             }
@@ -450,6 +468,12 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
     break;
 
     case WM_DESTROY:
+        // ✅ Очищаем кэшированный пароль при закрытии
+        if (!m_cachedMasterPassword.empty())
+        {
+            SecureZeroMemory(const_cast<wchar_t*>(m_cachedMasterPassword.c_str()), m_cachedMasterPassword.length() * sizeof(wchar_t));
+            m_cachedMasterPassword.clear();
+        }
         PostQuitMessage(0);
         break;
 

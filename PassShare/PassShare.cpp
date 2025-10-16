@@ -12,9 +12,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    if (!LoginDialog::Show(hInstance))
-        return 0; 
-
     MainWindow mainWindow(hInstance, nCmdShow);
     if (!mainWindow.Create())
         return 1;

@@ -1,14 +1,19 @@
 #pragma once
 #include <windows.h>
+#include <string>
 
 // Класс
 class LoginDialog
 {
 public:
-    static bool Show(HINSTANCE hInstance, HWND parent = NULL);
-    static INT_PTR CALLBACK DialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+    // Методы для показа диалогов
+    static bool ShowLogin(HINSTANCE hInstance, HWND parent, std::wstring& outPassword);
+    static bool ShowNewPassword(HINSTANCE hInstance, HWND parent, std::wstring& outPassword);
+
+    // Отдельные обработчики для каждого диалога
+    static INT_PTR CALLBACK LoginDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+    static INT_PTR CALLBACK NewPasswordDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 
 private:
-    static bool ValidatePassword(const wchar_t* password);
     static void CheckCapsLock(HWND hDlg);
 };
