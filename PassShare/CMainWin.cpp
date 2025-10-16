@@ -137,8 +137,12 @@ void MainWindow::CreatePassBase(HWND hWnd)
         {
             if (m_db.CreateEncryptedBase(szFile, masterPassword))
             {
-                m_cachedMasterPassword = masterPassword; // ✅ Сохраняем
+                m_cachedMasterPassword = masterPassword;
                 RefreshPasswordList();
+                if (m_hList)
+                {
+                    ShowWindow(m_hList, SW_SHOW);
+                }
                 MessageBoxW(hWnd, L"Хранилище создано успешно!", L"Успех", MB_OK | MB_ICONINFORMATION);
             }
 
@@ -187,6 +191,11 @@ void MainWindow::OnLoadDatabase(HWND hWnd)
         {
             m_cachedMasterPassword = masterPassword; // ✅ Сохраняем
             RefreshPasswordList();
+            if (m_hList)
+            {
+                ShowWindow(m_hList, SW_SHOW); // <--- Показываем
+                // Опционально: UpdateWindow(m_hList);
+            }
             MessageBoxW(hWnd, L"База загружена успешно!", L"Успех", MB_OK | MB_ICONINFORMATION);
         }
         else
@@ -333,7 +342,7 @@ LRESULT MainWindow::HandleMessages(HWND hWnd, UINT message, WPARAM wParam, LPARA
         }
 
         m_hList = hList;
-        //ShowWindow(m_hList, SW_HIDE);
+        ShowWindow(m_hList, SW_HIDE);
 
         // Создаём ImageList с размером 32x32
         HIMAGELIST hImageList = ImageList_Create(32, 32, ILC_COLOR32, 0, 0);

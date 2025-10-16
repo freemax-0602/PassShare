@@ -3,10 +3,10 @@
 // Используется PassShare.rc
 //
 #define IDC_MYICON                      2
-#define IDC_LOGIN_BUTTON                2
 #define IDOK2                           3
 #define IDC_PASSWORD_LIST               100
 #define IDD_PASSSHARE_DIALOG            102
+#define IDD_NEW_PASSSHARE_DIALOG        102
 #define IDS_APP_TITLE                   103
 #define IDD_ABOUTBOX                    103
 #define IDM_ABOUT                       104
@@ -21,10 +21,14 @@
 #define IDC_BUTTON1                     1000
 #define IDC_PASSWORD_EDIT               1005
 #define IDC_CAPSLOCK_WARNING            1006
+#define IDC_CONFIRM_PASSWORD_EDIT       1007
 #define IDC_EDIT_LOGIN                  1008
 #define IDC_EDIT_URL                    1009
+#define IDC_LOGIN_NEW_BUTTON            1009
 #define IDC_EDIT_DESCRIPTION            1010
+#define IDC_LOGIN_BUTTON                1010
 #define IDC_EDIT_PASS                   1011
+#define IDC_CONFIRM_LOGIN_PASSWORD_EDIT 1011
 #define IDC_SEARCH_EDIT                 1012
 #define ID_32771                        32771
 #define ID_32772                        32772
@@ -38,9 +42,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        132
+#define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32776
-#define _APS_NEXT_CONTROL_VALUE         1008
+#define _APS_NEXT_CONTROL_VALUE         1012
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif
