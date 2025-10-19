@@ -6,6 +6,7 @@
 #include <string>
 #include <locale>
 #include <codecvt>
+#include <vector>
 
 // --- Генерация ключа ---
 bool CryptoManager::DeriveKeyFromPassword(const std::wstring& password,
@@ -157,4 +158,105 @@ void CryptoManager::SecureClear(std::string& str)
         SecureZeroMemory(const_cast<char*>(str.data()), str.size());
         str.clear();
     }
+}
+
+bool CryptoManager::EncryptString(const std::string& plaintext,
+    const std::vector<unsigned char>& key,
+    std::vector<unsigned char>& encryptedData)
+{
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) return false;
+
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key.data(), NULL) != 1)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    // Генерация случайного IV
+    std::vector<unsigned char> iv(AES_BLOCK_SIZE);
+    if (RAND_bytes(iv.data(), AES_BLOCK_SIZE) != 1)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    // Устанавливаем IV
+    if (EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, iv.data()) != 1)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    std::vector<unsigned char> ciphertext(plaintext.length() + AES_BLOCK_SIZE);
+    int len = 0;
+    int ciphertext_len = 0;
+
+    if (EVP_EncryptUpdate(ctx, ciphertext.data(), &len, (const unsigned char*)plaintext.c_str(), plaintext.length()) != 1)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+    ciphertext_len = len;
+
+    if (EVP_EncryptFinal_ex(ctx, ciphertext.data() + len, &len) != 1)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+    ciphertext_len += len;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    // Возвращаем [IV][ciphertext]
+    encryptedData.resize(iv.size() + ciphertext_len);
+    memcpy(encryptedData.data(), iv.data(), iv.size());
+    memcpy(encryptedData.data() + iv.size(), ciphertext.data(), ciphertext_len);
+
+    return true;
+}
+
+bool CryptoManager::DecryptString(const std::vector<unsigned char>& encryptedData,
+    const std::vector<unsigned char>& key,
+    std::string& decryptedData)
+{
+    if (encryptedData.size() < AES_BLOCK_SIZE)
+        return false;
+
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) return false;
+
+    // Извлекаем IV
+    std::vector<unsigned char> iv(encryptedData.begin(), encryptedData.begin() + AES_BLOCK_SIZE);
+    // Остальные данные - зашифрованные
+    std::vector<unsigned char> ciphertext(encryptedData.begin() + AES_BLOCK_SIZE, encryptedData.end());
+
+    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key.data(), iv.data()) != 1)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return false;
+    }
+
+    std::vector<unsigned char> plaintext(ciphertext.size() + AES_BLOCK_SIZE);
+    int len = 0;
+    int plaintext_len = 0;
+
+    if (EVP_DecryptUpdate(ctx, plaintext.data(), &len, ciphertext.data(), ciphertext.size()) != 1)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return false; // Ошибка расшифровки = неверный ключ
+    }
+    plaintext_len = len;
+
+    if (EVP_DecryptFinal_ex(ctx, plaintext.data() + len, &len) != 1)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return false; // Ошибка расшифровки = неверный ключ
+    }
+    plaintext_len += len;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    decryptedData = std::string(reinterpret_cast<char*>(plaintext.data()), plaintext_len);
+    return true;
 }

@@ -28,4 +28,15 @@ public:
     // Очищает буфер (для безопасности)
     static void SecureClear(std::vector<unsigned char>& buffer);
     static void SecureClear(std::string& str);
+
+    // Шифрует строку (например, login или password) с использованием ключа
+    // Возвращает [IV (16 байт)][зашифрованные_данные]
+    static bool EncryptString(const std::string& plaintext,
+        const std::vector<unsigned char>& key,
+        std::vector<unsigned char>& encryptedData);
+
+    // Расшифровывает строку (в формате [IV][зашифрованные_данные]) с использованием ключа
+    static bool DecryptString(const std::vector<unsigned char>& encryptedData,
+        const std::vector<unsigned char>& key,
+        std::string& decryptedData);
 };
